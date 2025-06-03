@@ -260,3 +260,5 @@ This will automatically send reminder emails to users who have payments due in 3
 
 
 
+# 🧪 Trade-Offs Overview
+To facilitate seamless and flexible testing of the dashboard functionality, no strict date validations were implemented during the creation of plans. This intentional design decision allows developers and testers to simulate various payment scenarios—such as early, on-time, or late payments—without constraints.
