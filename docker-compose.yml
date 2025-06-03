@@ -1,0 +1,93 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./payment_plan
+    command: >
+      sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - ./payment_plan:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=True
+    depends_on:
+      - db
+    networks:
+      - bnpl_network
+
+  frontend:
+    build:
+      context: ./front-plan-app
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./front-plan-app:/app
+      - /app/node_modules
+    stdin_open: true
+    tty: true
+    command: npm start
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+    
+    networks:
+      - bnpl_network
+
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: bnpl_db
+      POSTGRES_USER: bnpl_user
+      POSTGRES_PASSWORD: bnpl_pass
+    volumes:
+      - /var/lib/postgresql/data
+    ports:
+      - "5434:5432"
+    networks:
+      - bnpl_network
+
+
+  celery:
+    build:
+      context: ./payment_plan
+    command: celery -A payment_plan worker -l info
+    volumes:
+      - ./payment_plan:/app
+    depends_on:
+      - backend
+      - redis
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+    networks:
+      - bnpl_network
+
+  celery-beat:
+    build:
+      context: ./payment_plan
+    command: celery -A payment_plan beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    volumes:
+      - ./payment_plan:/app
+    depends_on:
+      - backend
+      - redis
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+    networks:
+      - bnpl_network
+
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    networks:
+      - bnpl_network
+
+volumes:
+  postgres_data:
+
+
+networks:
+  bnpl_network:
+    driver: bridge
